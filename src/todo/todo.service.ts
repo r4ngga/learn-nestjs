@@ -1,26 +1,48 @@
 import { Injectable } from '@nestjs/common';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
+import { Model } from 'mongoose';
+import { Todo } from './entities/todo.entity'
+import { InjectModel } from '@nestjs/mongoose';
+// import { TodoTransformer } from './transformer/todo.transformer';
+import { TodoTransformer } from './transformers/todo.transformer';
 
 @Injectable()
 export class TodoService {
-  create(createTodoDto: CreateTodoDto) {
-    return 'This action adds a new todo';
+constructor(@InjectModel('Todo') private TodoModel: Model<Todo>) { }
+async create(createTodoDto: CreateTodoDto): Promise<TodoTransformer> {
+    let data = new this.TodoModel(createTodoDto)
+    return TodoTransformer.singleTransform(await data.save())
   }
-
-  findAll() {
-    return `This action returns all todo`;
+async findAll(): Promise<TodoTransformer> {
+    let data = await this.TodoModel.find()
+if (data.length < 1) {
+      return []
+    }
+return TodoTransformer.transform(data)
   }
-
-  findOne(id: number) {
-    return `This action returns a #${id} todo`;
+async findOne(id: string): Promise<TodoTransformer> {
+    console.log(id)
+    let data = await this.TodoModel.findById(id)
+if (!data) {
+      throw new Error('Data not found!')
+    }
+return TodoTransformer.singleTransform(data)
   }
-
-  update(id: number, updateTodoDto: UpdateTodoDto) {
-    return `This action updates a #${id} todo`;
+async update(id: string, updateTodoDto: UpdateTodoDto): Promise<TodoTransformer> {
+    let data = await this.TodoModel.findByIdAndUpdate(id, updateTodoDto, { 'new': true })
+    
+    if (!data) {
+      throw new Error("Todo is not found!")
+    }
+return TodoTransformer.singleTransform(data)
   }
-
-  remove(id: number) {
-    return `This action removes a #${id} todo`;
+async remove(id: string): Promise<String> {
+    let data = await this.TodoModel.findByIdAndDelete(id)
+    
+    if (!data) {
+      throw new Error("Todo is not found!")
+    }
+return "Todo has been deleted!"
   }
 }
